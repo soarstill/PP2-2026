@@ -4,3 +4,6 @@ if  expensive :		# 관계 수식 대신에 부울 변수가 들어가도 된다.
 	shipping_cost = 0
 else :
 	shipping_cost = 3000
+
+total_cost = price + shipping_cost
+print("Total cost:", total_cost)
