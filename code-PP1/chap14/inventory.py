@@ -1,0 +1,10 @@
+import sqlite3
+con = sqlite3.connect('inventory.db')
+cur = con.cursor()
+cur.execute("CREATE TABLE stock (item char(100), number INTEGER, id INTEGER PRIMARY KEY )")
+cur.execute("INSERT INTO stock (item, number) VALUES ('eggs', 100)")
+cur.execute("INSERT INTO stock (item, number) VALUES ('milk', 30)")
+cur.execute("INSERT INTO stock (item, number) VALUES ('bread', 70)")
+con.commit()
+con.close()
+print("데이터베이스가 생성되었습니다.")

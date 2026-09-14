@@ -1,0 +1,5 @@
+f = open("test.txt", "r")
+s = f.read()
+myList = s.split("\n")
+print(myList)
+f.close()
