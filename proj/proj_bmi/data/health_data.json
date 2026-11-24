@@ -1,0 +1,14 @@
+[
+  {
+    "id": "P2026-0001",
+    "name": "홍길동",
+    "birth_year": 2002,
+    "gender": "남성",
+    "height": 170.0,
+    "weight": 60.0,
+    "bmi": 20.76,
+    "status": "정상",
+    "record_date": "2026-11-24",
+    "notes": ""
+  }
+]
