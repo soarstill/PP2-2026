@@ -1,11 +1,22 @@
-"""HealthManager의 핵심 동작을 검증합니다."""
+"""HealthManager의 핵심 동작을 검증합니다.
+
+AI 사용 정보
+AI: Copilot (Copilot SDK in VS Code)
+목적: 콘솔 테스트 메뉴의 정상 및 오류 처리 검증
+프롬프트: "GUI 대신에 health_logic 에 TUI 로 테스트하는 함수를 추가할 수 있을까? __name__ == __main__ 에서 호출할 수 있도록"
+작성자: [제출 전 본인 이름 기입]
+날짜: 2026-11-24
+"""
 
 import csv
+import io
 import tempfile
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
+from unittest.mock import patch
 
-from modules.health_logic import DuplicateRecordError, HealthManager
+from modules.health_logic import DuplicateRecordError, HealthManager, run_tui
 
 
 class HealthManagerTests(unittest.TestCase):
@@ -100,6 +111,36 @@ class HealthManagerTests(unittest.TestCase):
         self.assertEqual(report.skipped_count, 1)
         imported_record = self.manager.search_records("박서준")[0]
         self.assertRegex(imported_record.id, r"^P\d{4}-\d{4}$")
+
+    def test_tui_updates_and_deletes_selected_record(self) -> None:
+        responses = [
+            "3", self.record.id,
+            "4", self.record.id, "김민지", "1998", "여성", "165", "70", "",
+            "6",
+            "5", self.record.id, "y",
+            "0",
+        ]
+        output = io.StringIO()
+        with patch("builtins.input", side_effect=responses), redirect_stdout(output):
+            run_tui(self.manager)
+        self.assertIn("수정 완료:", output.getvalue())
+        self.assertIn("BMI: 25.71", output.getvalue())
+        self.assertIn("전체 1명", output.getvalue())
+        self.assertIn("삭제 완료.", output.getvalue())
+        self.assertEqual(self.manager.records, ())
+
+    def test_tui_rejects_invalid_input_and_can_continue(self) -> None:
+        responses = [
+            "1", "박서준", "1995", "남성", "0", "75", "",
+            "1", "박서준", "1995", "남성", "180", "75", "",
+            "0",
+        ]
+        output = io.StringIO()
+        with patch("builtins.input", side_effect=responses), redirect_stdout(output):
+            run_tui(self.manager)
+        self.assertIn("처리 실패:", output.getvalue())
+        self.assertIn("등록 완료:", output.getvalue())
+        self.assertEqual(len(self.manager.records), 2)
 
 
 if __name__ == "__main__":

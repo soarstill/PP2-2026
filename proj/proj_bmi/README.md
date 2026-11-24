@@ -15,6 +15,17 @@ GUI는 Tkinter를 사용합니다. 기본 데이터는 `data/health_data.json`�
 JSON, CSV, TXT, Pickle 형식으로 불러오기와 내보내기를 지원합니다.
 CSV 파일은 여러 사람을 한 번에 등록할 수 있습니다.
 
+## 콘솔 테스트
+
+GUI 없이 로직을 직접 시험하려면 프로젝트 폴더에서 다음 명령을 실행합니다.
+
+```powershell
+python -m modules.health_logic
+```
+
+`python modules\health_logic.py`로도 실행할 수 있습니다. 콘솔 테스트는 임시
+데이터를 사용하므로 종료하면 기록이 삭제되며, 기존 GUI 데이터는 변경되지 않습니다.
+
 BMI 구간은 화면 예시 기준입니다.
 
 - 저체중: 18.5 미만

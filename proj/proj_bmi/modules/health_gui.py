@@ -15,7 +15,7 @@ from datetime import date
 from pathlib import Path
 from tkinter import filedialog, messagebox, ttk
 
-from modules.health_db import StorageError
+from modules.health_db import HealthRecord, StorageError
 from modules.health_logic import BMI_STATUSES, GENDERS, HealthManager
 
 
@@ -246,6 +246,7 @@ class HealthGUI:
             "weight",
             "bmi",
             "status",
+            "actions",
         )
         self.tree = ttk.Treeview(
             table_frame,
@@ -264,6 +265,7 @@ class HealthGUI:
             "weight": "체중 (kg)",
             "bmi": "BMI",
             "status": "상태",
+            "actions": "작업",
         }
         widths = {
             "record_date": 96,
@@ -275,6 +277,7 @@ class HealthGUI:
             "weight": 90,
             "bmi": 70,
             "status": 80,
+            "actions": 120,
         }
         for column in columns:
             self.tree.heading(column, text=headings[column])
@@ -294,6 +297,7 @@ class HealthGUI:
             xscrollcommand=horizontal_scrollbar.set,
         )
         self.tree.bind("<<TreeviewSelect>>", self._on_record_selected)
+        self.tree.bind("<Button-1>", self._on_tree_action)
 
         ttk.Label(
             table_panel,
@@ -460,6 +464,10 @@ class HealthGUI:
             record = self.manager.get_record(record_id)
         except KeyError:
             return
+        self._display_record(record)
+
+    def _display_record(self, record: HealthRecord) -> None:
+        """선택된 레코드를 입력 폼과 BMI 게이지에 표시합니다."""
         self.selected_record_id = record.id
         self.name_var.set(record.name)
         self.gender_var.set(record.gender)
@@ -498,6 +506,7 @@ class HealthGUI:
                     f"{record.weight:g}",
                     f"{record.bmi:.2f}",
                     record.status,
+                    "수정   |   삭제",
                 ),
             )
         if select_id and self.tree.exists(select_id):
@@ -505,6 +514,30 @@ class HealthGUI:
             self.tree.focus(select_id)
             self.tree.see(select_id)
             self._on_record_selected(None)
+
+    def _on_tree_action(self, event: tk.Event) -> str | None:
+        """표의 작업 열을 클릭하면 해당 행을 수정하거나 삭제합니다."""
+        row_id = self.tree.identify_row(event.y)
+        column_id = self.tree.identify_column(event.x)
+        if not row_id or column_id != "#10":
+            return None
+
+        try:
+            record = self.manager.get_record(row_id)
+        except KeyError:
+            return "break"
+        if self.selected_record_id != row_id:
+            self._display_record(record)
+
+        bounds = self.tree.bbox(row_id, "actions")
+        if not bounds:
+            return "break"
+        click_position = event.x - bounds[0]
+        if click_position < bounds[2] * 0.5:
+            self._update_record()
+        else:
+            self._delete_record()
+        return "break"
 
     def _refresh_statistics(self) -> None:
         """요약 통계를 화면 아래쪽에 갱신합니다."""

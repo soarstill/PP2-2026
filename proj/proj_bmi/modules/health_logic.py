@@ -4,6 +4,7 @@ AI 사용 정보
 AI: Copilot (Copilot SDK in VS Code)
 목적: BMI 정보 관리 프로그램의 비즈니스 로직 모듈 구현
 프롬프트: "4가지 파일 형식 모두 지원. ID는 자동생성. 파일내보내기, 불러오기 기능 포함. 객체지향."
+추가 프롬프트: "GUI 대신에 health_logic 에 TUI 로 테스트하는 함수를 추가할 수 있을까? __name__ == __main__ 에서 호출할 수 있도록"
 작성자: [제출 전 본인 이름 기입]
 날짜: 2026-11-24
 """
@@ -12,12 +13,16 @@ from __future__ import annotations
 
 import math
 import re
+import tempfile
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
 from typing import Any, Iterable, Mapping
 
-from modules.health_db import HealthFileStore, HealthRecord, StorageError
+if __package__:
+    from .health_db import HealthFileStore, HealthRecord, StorageError
+else:
+    from health_db import HealthFileStore, HealthRecord, StorageError
 
 
 BMI_STATUSES = ("저체중", "정상", "과체중", "비만")
@@ -394,3 +399,88 @@ class HealthManager:
             if value is not None:
                 return value
         return None
+
+
+def _read_record_fields() -> dict[str, str]:
+    """콘솔에서 건강정보 입력값을 읽습니다."""
+    return {
+        "name": input("이름: "),
+        "birth_year": input("생년: "),
+        "gender": input("성별 (남성/여성/기타): "),
+        "height": input("신장 (cm): "),
+        "weight": input("체중 (kg): "),
+        "notes": input("추가 정보 (없으면 Enter): "),
+    }
+
+
+def _print_record(record: HealthRecord) -> None:
+    """레코드 한 건의 상세 정보를 출력합니다."""
+    print(
+        f"ID: {record.id} | 이름: {record.name} | 생년: {record.birth_year} | "
+        f"성별: {record.gender} | 신장: {record.height:g} cm | "
+        f"체중: {record.weight:g} kg | BMI: {record.bmi:.2f} | "
+        f"상태: {record.status} | 날짜: {record.record_date} | "
+        f"추가 정보: {record.notes or '-'}"
+    )
+
+
+def run_tui(manager: HealthManager) -> None:
+    """콘솔 메뉴로 전달받은 관리자의 CRUD, 검색 및 통계를 시험합니다."""
+    print("건강정보 콘솔 테스트")
+    while True:
+        print(
+            "\n1. 등록  2. 전체 조회  3. 검색  4. 수정  "
+            "5. 삭제  6. 통계  0. 종료"
+        )
+        try:
+            choice = input("메뉴 선택: ").strip()
+            if choice == "0":
+                print("콘솔 테스트를 종료합니다.")
+                return
+            if choice == "1":
+                record = manager.add_record(**_read_record_fields())
+                print("등록 완료:")
+                _print_record(record)
+            elif choice in ("2", "3"):
+                query = input("이름 또는 ID (전체 검색은 Enter): ") if choice == "3" else ""
+                records = manager.search_records(query)
+                if not records:
+                    print("검색된 기록이 없습니다.")
+                for record in records:
+                    _print_record(record)
+            elif choice == "4":
+                record_id = input("수정할 ID: ").strip()
+                manager.get_record(record_id)
+                print("변경할 모든 정보를 입력하세요.")
+                record = manager.update_record(record_id, **_read_record_fields())
+                print("수정 완료:")
+                _print_record(record)
+            elif choice == "5":
+                record_id = input("삭제할 ID: ").strip()
+                record = manager.get_record(record_id)
+                if input(f"{record.name}님을 삭제할까요? (y/N): ").strip().lower() == "y":
+                    manager.delete_record(record_id)
+                    print("삭제 완료.")
+                else:
+                    print("삭제를 취소했습니다.")
+            elif choice == "6":
+                stats = manager.calculate_statistics()
+                print(
+                    "전체 {count}명 | 평균 신장 {average_height:.2f} cm | "
+                    "평균 체중 {average_weight:.2f} kg | 평균 BMI {average_bmi:.2f}".format(
+                        **stats
+                    )
+                )
+            else:
+                print("올바른 메뉴 번호를 입력하세요.")
+        except (ValueError, KeyError, StorageError) as exc:
+            print(f"처리 실패: {exc}")
+        except (EOFError, KeyboardInterrupt):
+            print("\n콘솔 테스트를 종료합니다.")
+            return
+
+
+if __name__ == "__main__":
+    print("임시 데이터로 테스트합니다. 종료하면 테스트 데이터가 삭제됩니다.")
+    with tempfile.TemporaryDirectory(prefix="bmi_tui_") as temporary_directory:
+        run_tui(HealthManager(data_dir=temporary_directory, auto_load=False))
